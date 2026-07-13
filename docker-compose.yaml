@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:16-alpine
-    containerz-name: 69-s2-db
+    container_name: 69-s2-db
     ports:
       - 54321:5432
     environment:
