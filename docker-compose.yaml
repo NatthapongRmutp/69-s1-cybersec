@@ -1,6 +1,6 @@
 services:
   db:
-  image: postgres:16
+    image: postgres:16
     container_name: 69-s2-db
     restart: always
     environment:
@@ -41,13 +41,11 @@ services:
       DATABASE_NAME: ${POSTGRES_DB}
       DATABASE_USERNAME: ${POSTGRES_USER}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
-
       APP_KEYS: ${APP_KEYS}
       API_TOKEN_SALT: ${API_TOKEN_SALT}
       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
       JWT_SECRET: ${JWT_SECRET}
       TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
-
     volumes:
       - strapi_data:/opt/app
 
