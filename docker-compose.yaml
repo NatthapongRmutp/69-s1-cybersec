@@ -52,6 +52,6 @@ services:
       TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
 
     volumes:
-      - strapi_data:/opt/app
+  postgres_data:
   pgadmin_data:
   strapi_data:
