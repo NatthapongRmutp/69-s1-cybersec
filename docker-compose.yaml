@@ -26,17 +26,14 @@ services:
     volumes:
       - pgadmin_data:/var/lib/pgadmin
 
-   app:
+  app:
     image: prawee/strapi
     container_name: 69-s2-app
     restart: always
-
     depends_on:
       - db
-
     ports:
       - "9092:1337"
-
     environment:
       DATABASE_CLIENT: postgres
       DATABASE_HOST: db
@@ -52,6 +49,9 @@ services:
       TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
 
     volumes:
+      - strapi_data:/opt/app
+
+volumes:
   postgres_data:
   pgadmin_data:
   strapi_data:
