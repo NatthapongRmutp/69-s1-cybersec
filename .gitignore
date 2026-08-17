@@ -1,2 +1,11 @@
+# Environment
 .env
-data-postgres
+.env.*
+!.env.example
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
