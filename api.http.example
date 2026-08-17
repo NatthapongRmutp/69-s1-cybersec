@@ -1,0 +1,45 @@
+# REST API TEST
+# Base URL: http://localhost:9092
+
+### =========================
+### LOGIN
+### =========================
+POST http://localhost:9092/admin/login
+Content-Type: application/json
+
+{
+    "email": "natthapong-w@rmutp.ac.th",
+    "password": "@Purnznat06",
+    "rememberMe": false
+}
+
+
+### =========================
+### REGISTER
+### =========================
+POST http://localhost:9092/admin/register
+Content-Type: application/json
+
+{
+    "email": "natthapong-w@rmutp.ac.th",
+    "password": "@Purnznat06"
+}
+
+
+### =========================
+### FORGOT PASSWORD
+### =========================
+POST http://localhost:9092/admin/forgot-password
+Content-Type: application/json
+
+{
+    "email": "natthapong-w@rmutp.ac.th"
+}
+
+
+### =========================
+### PROFILE
+### =========================
+GET http://localhost:9092/admin/profile
+Content-Type: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN
