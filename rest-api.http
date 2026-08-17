@@ -1,9 +1,0 @@
-### Login
-POST http://localhost:9092/admin/login
-Content-Type: application/json
-
-{
-    "email": "{{$dotenv TEST_EMAIL}}",
-    "password": "{{$dotenv TEST_PASSWORD}}",
-    "rememberMe": false
-}
