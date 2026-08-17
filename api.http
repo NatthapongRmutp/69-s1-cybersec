@@ -9,7 +9,7 @@ Content-Type: application/json
 
 {
     "email": "natthapong-w@rmutp.ac.th",
-    "password": "admin",
+    "password": "@Purnznat06",
     "rememberMe": false
 }
 
@@ -18,11 +18,11 @@ Content-Type: application/json
 ### REGISTER
 ### =========================
 POST http://localhost:9092/admin/register
-Content-Type: application/json
+Content-Type: application/jsona
 
 {
     "email": "natthapong-w@rmutp.ac.th",
-    "password": "admin"
+    "password": "@Purnznat06"
 }
 
 
