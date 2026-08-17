@@ -2,3 +2,4 @@
 .DS_Store
 data-postgres
 api.http
+*.http
