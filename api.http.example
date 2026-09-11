@@ -1,5 +1,8 @@
 # REST API Example
 
+> Credentials used for testing are stored in the `.env` file.
+> Do not commit real credentials to GitHub.
+
 ## 1. Admin
 
 ### 1.1 Login
@@ -7,6 +10,8 @@
 POST `http://localhost:9092/admin/login`
 
 Content-Type: application/json
+
+Credentials: `ADMIN_EMAIL`, `ADMIN_PASSWORD`
 
 ```json
 {
