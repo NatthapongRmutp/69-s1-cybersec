@@ -5,7 +5,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: <REDACTED>}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
@@ -20,7 +20,7 @@ services:
       - db
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_DEFAULT_PASSWORD: <REDACTED>}
     ports:
       - "8082:80"
     volumes:
@@ -40,11 +40,11 @@ services:
       DATABASE_PORT: 5432
       DATABASE_NAME: ${POSTGRES_DB}
       DATABASE_USERNAME: ${POSTGRES_USER}
-      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
-      APP_KEYS: ${APP_KEYS}
+      DATABASE_PASSWORD: <REDACTED>}
+      APP_KEYS: <REDACTED>}
       API_TOKEN_SALT: ${API_TOKEN_SALT}
-      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
-      JWT_SECRET: ${JWT_SECRET}
+      ADMIN_JWT_SECRET: <REDACTED>}
+      JWT_SECRET: <REDACTED>}
       TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
     volumes:
       - strapi_data:/opt/app

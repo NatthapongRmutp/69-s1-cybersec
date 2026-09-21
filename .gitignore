@@ -2,3 +2,5 @@
 .DS_Store
 data-postgres
 api.http
+
+security-scan-log.md

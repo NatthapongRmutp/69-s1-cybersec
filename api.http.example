@@ -1,100 +1,150 @@
-# REST API Example
+# REST API tests (VS Code "REST Client")
+# All credentials come from the `.env` file next to this file.
+# Run the "Login" call first: the returned JWT is reused automatically
+# by the "Profile" calls below through the `# @name` variables.
 
-> Credentials used for testing are stored in the `.env` file.
-> Do not commit real credentials to GitHub.
+## Variables
+@host = http://localhost:{{$dotenv APP_PORT}}
 
-## 1. Admin
+@admin_email = {{$dotenv ADMIN_EMAIL}}
+@admin_password = {{$dotenv ADMIN_PASSWORD}}
+
+@user_email = {{$dotenv USER_EMAIL}}
+@user_password = {{$dotenv USER_PASSWORD}}
+
+@new_password = {{$dotenv NEW_PASSWORD}}
+
+@register_username = {{$dotenv REGISTER_USERNAME}}
+@register_email = {{$dotenv REGISTER_EMAIL}}
+@register_password = {{$dotenv REGISTER_PASSWORD}}
+
+
+## 1.Admin
 
 ### 1.1 Login
-
-POST `http://localhost:9092/admin/login`
-
+# Saves the token as `adminLogin` -> used by 1.4 automatically.
+# @name adminLogin
+POST {{host}}/admin/login
 Content-Type: application/json
 
-Credentials: `ADMIN_EMAIL`, `ADMIN_PASSWORD`
-
-```json
 {
-    "email": "admin@example.com",
-    "password": "your_password",
+    "email": "{{admin_email}}",
+    "password": "{{admin_password}}",
     "rememberMe": false
 }
-```
 
-### 1.2 Register
 
-POST `http://localhost:9092/admin/register`
-
+### 1.2 Register (admin) — one time only
+# Works ONLY on a fresh database (no admin account yet).
+# If an admin already exists -> 400 "You cannot register a new super admin" (expected).
+# @name adminRegister
+POST {{host}}/admin/register-admin
 Content-Type: application/json
 
-```json
 {
-    "email": "admin@example.com",
-    "password": "your_password"
+    "firstname": "Example",
+    "lastname": "Admin",
+    "email": "{{admin_email}}",
+    "password": "{{admin_password}}"
 }
-```
+
 
 ### 1.3 Forgot Password
-
-POST `http://localhost:9092/admin/forgot-password`
-
+# Returns 204. The reset token is emailed; no mail server is configured here,
+# so read it from the DB instead (PGAdmin / psql):
+#   SELECT reset_password_token FROM admin_users WHERE email = '{{admin_email}}';
+POST {{host}}/admin/forgot-password
 Content-Type: application/json
 
-```json
 {
-    "email": "admin@example.com"
+    "email": "{{admin_email}}"
 }
-```
+
+
+### 1.3.1 Reset Password
+# Replace RESET_TOKEN with the value from the 1.3 e-mail / DB query above.
+# @name adminResetPassword
+POST {{host}}/admin/reset-password
+Content-Type: application/json
+
+{
+    "resetPasswordToken": "RESET_TOKEN",
+    "password": "{{new_password}}"
+}
+
 
 ### 1.4 Profile
+# Token is taken automatically from the 1.1 `adminLogin` response.
+GET {{host}}/admin/users/me
+Authorization: Bearer {{adminLogin.response.body.$.data.token}}
 
-GET `http://localhost:9092/admin/profile`
 
-Authorization: Bearer `YOUR_ADMIN_JWT`
-
-## 2. User
+## 2.User
 
 ### 2.1 Login
-
-POST `http://localhost:9092/api/auth/local`
-
+# Saves the token as `userLogin` -> used by 2.4 automatically.
+# @name userLogin
+POST {{host}}/api/auth/local
 Content-Type: application/json
 
-```json
 {
-    "identifier": "user@example.com",
-    "password": "your_password"
+    "identifier": "{{user_email}}",
+    "password": "{{user_password}}"
 }
-```
 
-### 2.2 Register
 
-POST `http://localhost:9092/api/auth/local/register`
-
+### 2.2 Register (creates a NEW account — run once per account)
+# If this email/username is already taken -> 400 (expected).
+# After registering you can point USER_EMAIL / USER_PASSWORD in `.env`
+# at {{register_email}} / {{register_password}} so 2.1 & 2.4 use the new account.
+# @name userRegister
+POST {{host}}/api/auth/local/register
 Content-Type: application/json
 
-```json
 {
-    "username": "example_user",
-    "email": "user@example.com",
-    "password": "your_password"
+    "username": "{{register_username}}",
+    "email": "{{register_email}}",
+    "password": "{{register_password}}"
 }
-```
+
 
 ### 2.3 Forgot Password
-
-POST `http://localhost:9092/api/auth/forgot-password`
-
+# No mail server is configured, so the code never arrives by e-mail.
+# The code is written to the DB before sending, read it from PGAdmin / psql:
+#   SELECT reset_password_token FROM up_users WHERE email = '{{user_email}}';
+POST {{host}}/api/auth/forgot-password
 Content-Type: application/json
 
-```json
 {
-    "email": "user@example.com"
+    "email": "{{user_email}}"
 }
-```
+
+
+### 2.3.1 Reset Password
+# Replace RESET_CODE with the value from the 2.3 e-mail / DB query above.
+# @name userResetPassword
+POST {{host}}/api/auth/reset-password
+Content-Type: application/json
+
+{
+    "code": "RESET_CODE",
+    "password": "{{new_password}}",
+    "passwordConfirmation": "{{new_password}}"
+}
+
+
+### 2.3.2 Login After Reset Password
+# Works once 2.3.1 has actually reset the password to {{new_password}}.
+POST {{host}}/api/auth/local
+Content-Type: application/json
+
+{
+    "identifier": "{{user_email}}",
+    "password": "{{new_password}}"
+}
+
 
 ### 2.4 Profile
-
-GET `http://localhost:9092/api/users/me`
-
-Authorization: Bearer `YOUR_USER_JWT`
+# Token is taken automatically from the 2.1 `userLogin` response.
+GET {{host}}/api/users/me
+Authorization: Bearer {{userLogin.response.body.$.jwt}}
