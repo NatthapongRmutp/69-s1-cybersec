@@ -165,12 +165,10 @@ Authorization: Bearer {{userLogin.response.body.$.jwt}}
 ## 3.Content
 
 # Content API ของ Strapi ไม่รับ admin JWT (ตอบ 401) และไม่รับ user JWT
-# ถ้า role นั้นไม่มี permission (ตอบ 403) — ต้องใช้ API token จาก
-# Settings -> API Tokens -> Create API Token -> Full access
-# แล้วใส่ค่าไว้ที่ API_TOKEN ใน .env (ดูวิธีสร้างในไฟล์ .env)
-#
-# ต้องสร้าง API token ครั้งเดียวก่อน แล้วทุก call ในหัวข้อนี้จะใช้ตัวเดียวกัน
-# ถ้าได้ 401/403 แปลว่ายังไม่ได้ใส่ API_TOKEN หรือ token หมดอายุ
+# ถ้า role นั้นไม่มี permission (ตอบ 403) — ต้องใช้ API token แบบ Full access
+# ไฟล์นี้สร้างให้เองอัตโนมัติที่ Prereq.1 ด้านล่าง ไม่ต้องแก้ .env
+# ทุก call ในหัวข้อนี้จะใช้ token ตัวเดียวกันที่สร้างในขั้นตอนนั้น
+# ถ้าได้ 401/403 แปลว่ายังไม่ได้รัน Prereq.1 หรือ admin login ไม่สำเร็จ
 #
 # request body ต้องห่อด้วย "data" และ id ใน URL คือเลขที่ Strapi สร้างให้
 # 3.x.3 และ 3.x.4 ดึง id จาก response ของ 3.x.1 ให้อัตโนมัติ
@@ -195,13 +193,31 @@ Authorization: Bearer {{userLogin.response.body.$.jwt}}
 #     ถ้าต้องการทดสอบซ้ำให้เปลี่ยนค่าใน .env แล้วรันใหม่
 
 
+### Prereq.1 Create API Token (Full access)
+# ขั้นตอนก่อนใช้หัวข้อ 3.1-3.3 — ไม่ใช่ส่วนที่มอบหมาย
+# ใช้ admin JWT จาก 1.1 Login แล้วเก็บ accessKey ไว้ให้ทุก call ในหัวข้อ 3 ใช้เอง
+# ชื่อ token มีเลขสุ่มต่อท้าย เพื่อให้รันซ้ำได้โดยไม่ชน "Name already taken"
+# accessKey จะแสดงครั้งเดียวตอนสร้างเท่านั้น ถ้าทำหายต้องสร้างใหม่
+# @name contentApiToken
+POST {{host}}/admin/api-tokens
+Content-Type: application/json
+Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+
+{
+    "name": "rest-client-{{$randomInt 1000 9999}}",
+    "description": "auto-created by api.http for section 3",
+    "type": "full-access",
+    "lifespan": null
+}
+
+
 ### 3.1 Student
 
 #### 3.1.1 Create
 # cardId ต้องครบ 13 หลักและห้ามซ้ำ
 # @name studentCreate
 POST {{host}}/api/students
-Authorization: Bearer {{$dotenv API_TOKEN}}
+Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 Content-Type: application/json
 
 {
@@ -216,20 +232,20 @@ Content-Type: application/json
 #### 3.1.2 List All
 # mobile ที่ได้กลับมาเป็น ciphertext เพราะเป็น encrypted field
 GET {{host}}/api/students
-Authorization: Bearer {{$dotenv API_TOKEN}}
+Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 
 
 #### 3.1.3 List with ID
 # ใช้ id ที่ได้จาก 3.1.1 — ถ้ายังไม่ได้รัน 3.1.1 ให้รัน 3.1.1 ก่อน
 GET {{host}}/api/students/{{studentCreate.response.body.$.data.id}}
-Authorization: Bearer {{$dotenv API_TOKEN}}
+Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 
 
 #### 3.1.4 Update
 # PUT ส่งเฉพาะ field ที่ต้องการแก้ก็ได้ (partial update)
 # @name studentUpdate
 PUT {{host}}/api/students/{{studentCreate.response.body.$.data.id}}
-Authorization: Bearer {{$dotenv API_TOKEN}}
+Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 Content-Type: application/json
 
 {
@@ -246,7 +262,7 @@ Content-Type: application/json
 # name ห้ามซ้ำกับ record ที่มีอยู่
 # @name subjectCreate
 POST {{host}}/api/subjects
-Authorization: Bearer {{$dotenv API_TOKEN}}
+Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 Content-Type: application/json
 
 {
@@ -258,20 +274,20 @@ Content-Type: application/json
 
 #### 3.2.2 List All
 GET {{host}}/api/subjects
-Authorization: Bearer {{$dotenv API_TOKEN}}
+Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 
 
 #### 3.2.3 List with ID
 # ใช้ id ที่ได้จาก 3.2.1 — ถ้ายังไม่ได้รัน 3.2.1 ให้รัน 3.2.1 ก่อน
 GET {{host}}/api/subjects/{{subjectCreate.response.body.$.data.id}}
-Authorization: Bearer {{$dotenv API_TOKEN}}
+Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 
 
 #### 3.2.4 Update
 # PUT ส่งเฉพาะ field ที่ต้องการแก้ก็ได้ (partial update)
 # @name subjectUpdate
 PUT {{host}}/api/subjects/{{subjectCreate.response.body.$.data.id}}
-Authorization: Bearer {{$dotenv API_TOKEN}}
+Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 Content-Type: application/json
 
 {
@@ -286,7 +302,7 @@ Content-Type: application/json
 #### 3.3.1 Create
 # @name teacherCreate
 POST {{host}}/api/teachers
-Authorization: Bearer {{$dotenv API_TOKEN}}
+Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 Content-Type: application/json
 
 {
@@ -298,20 +314,20 @@ Content-Type: application/json
 
 #### 3.3.2 List All
 GET {{host}}/api/teachers
-Authorization: Bearer {{$dotenv API_TOKEN}}
+Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 
 
 #### 3.3.3 List with ID
 # ใช้ id ที่ได้จาก 3.3.1 — ถ้ายังไม่ได้รัน 3.3.1 ให้รัน 3.3.1 ก่อน
 GET {{host}}/api/teachers/{{teacherCreate.response.body.$.data.id}}
-Authorization: Bearer {{$dotenv API_TOKEN}}
+Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 
 
 #### 3.3.4 Update
 # PUT ส่งเฉพาะ field ที่ต้องการแก้ก็ได้ (partial update)
 # @name teacherUpdate
 PUT {{host}}/api/teachers/{{teacherCreate.response.body.$.data.id}}
-Authorization: Bearer {{$dotenv API_TOKEN}}
+Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 Content-Type: application/json
 
 {
