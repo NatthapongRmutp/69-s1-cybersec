@@ -148,3 +148,152 @@ Content-Type: application/json
 # Token is taken automatically from the 2.1 `userLogin` response.
 GET {{host}}/api/users/me
 Authorization: Bearer {{userLogin.response.body.$.jwt}}
+
+
+## 3.Content
+
+# ทุก call ในหัวข้อนี้ต้อง login ก่อน — รัน 1.1 Admin Login ให้เสร็จก่อนเสมอ
+# ใช้ token ของ admin เพราะ super admin ผ่าน permission ทุก content type
+# ถ้าต้องการทดสอบด้วยสิทธิ์ของ user ให้เปลี่ยนเป็น {{userLogin.response.body.$.jwt}}
+#
+# Strapi ต้องห่อ body ด้วย "data" และ id ใน URL คือเลขที่ Strapi สร้างให้
+# (ไม่ใช่ค่า studentId / subjectId / teacherId ที่เรากำหนดเอง)
+# 3.x.3 และ 3.x.4 ดึง id จาก response ของ 3.x.1 ให้อัตโนมัติ
+# ถ้าจะทดสอบกับ record ที่มีอยู่แล้ว ให้เปลี่ยนเป็น {{$dotenv STUDENT_ID}} / SUBJECT_ID / TEACHER_ID
+#
+# ถ้า content type เปิด Draft & Publish ให้เพิ่ม "publishedAt" ใน 3.x.1 เพื่อ publish ทันที
+#
+# Schema ที่ไฟล์นี้อ้างอิง (สร้างผ่าน Content-Type Builder — แก้ให้ตรงกับของจริง):
+#   student  -> studentId(string), firstname(string), lastname(string), email(email), phone(string)
+#   subject  -> subjectId(string), subjectName(string), credit(integer)
+#   teacher  -> teacherId(string), firstname(string), lastname(string), email(email)
+
+
+### 3.1 Student
+
+#### 3.1.1 Create
+# @name studentCreate
+POST {{host}}/api/students
+Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+    "data": {
+        "studentId": "{{$dotenv STUDENT_ID}}",
+        "firstname": "{{$dotenv STUDENT_FIRSTNAME}}",
+        "lastname": "{{$dotenv STUDENT_LASTNAME}}",
+        "email": "{{$dotenv STUDENT_EMAIL}}",
+        "phone": "{{$dotenv STUDENT_PHONE}}"
+    }
+}
+
+
+#### 3.1.2 List All
+GET {{host}}/api/students
+Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+
+
+#### 3.1.3 List with ID
+# ใช้ id ที่ได้จาก 3.1.1 — ถ้ายังไม่ได้รัน 3.1.1 ให้รัน 3.1.1 ก่อน
+GET {{host}}/api/students/{{studentCreate.response.body.$.data.id}}
+Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+
+
+#### 3.1.4 Update
+# PUT ส่งเฉพาะ field ที่ต้องการแก้ก็ได้ (partial update)
+# @name studentUpdate
+PUT {{host}}/api/students/{{studentCreate.response.body.$.data.id}}
+Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+    "data": {
+        "firstname": "{{$dotenv STUDENT_UPDATE_FIRSTNAME}}",
+        "phone": "{{$dotenv STUDENT_UPDATE_PHONE}}"
+    }
+}
+
+
+### 3.2 Subject
+
+#### 3.2.1 Create
+# @name subjectCreate
+POST {{host}}/api/subjects
+Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+    "data": {
+        "subjectId": "{{$dotenv SUBJECT_ID}}",
+        "subjectName": "{{$dotenv SUBJECT_NAME}}",
+        "credit": {{$dotenv SUBJECT_CREDIT}}
+    }
+}
+
+
+#### 3.2.2 List All
+GET {{host}}/api/subjects
+Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+
+
+#### 3.2.3 List with ID
+# ใช้ id ที่ได้จาก 3.2.1 — ถ้ายังไม่ได้รัน 3.2.1 ให้รัน 3.2.1 ก่อน
+GET {{host}}/api/subjects/{{subjectCreate.response.body.$.data.id}}
+Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+
+
+#### 3.2.4 Update
+# PUT ส่งเฉพาะ field ที่ต้องการแก้ก็ได้ (partial update)
+# @name subjectUpdate
+PUT {{host}}/api/subjects/{{subjectCreate.response.body.$.data.id}}
+Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+    "data": {
+        "credit": {{$dotenv SUBJECT_UPDATE_CREDIT}}
+    }
+}
+
+
+### 3.3 Teacher
+
+#### 3.3.1 Create
+# @name teacherCreate
+POST {{host}}/api/teachers
+Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+    "data": {
+        "teacherId": "{{$dotenv TEACHER_ID}}",
+        "firstname": "{{$dotenv TEACHER_FIRSTNAME}}",
+        "lastname": "{{$dotenv TEACHER_LASTNAME}}",
+        "email": "{{$dotenv TEACHER_EMAIL}}"
+    }
+}
+
+
+#### 3.3.2 List All
+GET {{host}}/api/teachers
+Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+
+
+#### 3.3.3 List with ID
+# ใช้ id ที่ได้จาก 3.3.1 — ถ้ายังไม่ได้รัน 3.3.1 ให้รัน 3.3.1 ก่อน
+GET {{host}}/api/teachers/{{teacherCreate.response.body.$.data.id}}
+Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+
+
+#### 3.3.4 Update
+# PUT ส่งเฉพาะ field ที่ต้องการแก้ก็ได้ (partial update)
+# @name teacherUpdate
+PUT {{host}}/api/teachers/{{teacherCreate.response.body.$.data.id}}
+Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+    "data": {
+        "firstname": "{{$dotenv TEACHER_UPDATE_FIRSTNAME}}"
+    }
+}
