@@ -96,7 +96,8 @@ Authorization: Bearer {{adminLogin.response.body.$.data.token}}
 # ข้อจำกัดที่ต้องรู้: ยังไม่ได้ตั้ง SMTP ในโปรเจกต์นี้ Strapi จึงส่งอีเมลไม่ได้
 #   - 1.3 / 2.3 (forgot-password) จะได้ 504 ภายใน 10 วินาที (nginx ตัดเวลาไว้แล้ว
 #     เพื่อไม่ให้ค้างนาน) ถ้าจะให้สำเร็จต้องตั้งค่า SMTP ใน .env ของ Strapi
-#   - 2.3.1 / 2.3.2 จึงยังทำต่อไม่ได้ เพราะไม่มี reset code
+#   - แต่ Strapi เขียน reset code ลงฐานข้อมูลก่อนพยายามส่งเมล ดังนั้นยังทำต่อได้
+#     ดูวิธีดึง code ที่คอมเมนต์ข้าง 2.3 แล้วนำไปใส่ใน 2.3.1
 #   ส่วนหัวข้อ 3 ไม่เกี่ยวกับอีเมล จึงใช้งานได้ครบทั้ง 12 call
 
 ### 2.1 Login
@@ -111,18 +112,19 @@ Content-Type: application/json
 }
 
 
-### 2.2 Register (creates a NEW account — run once per account)
-# If this email/username is already taken -> 400 (expected).
-# After registering you can point USER_EMAIL / USER_PASSWORD in `.env`
-# at {{register_email}} / {{register_password}} so 2.1 & 2.4 use the new account.
+### 2.2 Register (creates the account that 2.1 / 2.4 use — run once)
+# Uses the SAME {{user_username}} / {{user_email}} / {{user_password}} as 2.1,
+# so 2.1 can log straight into the account 2.2 created.
+# Already taken -> 400 (expected on every run after the first).
+# Then run ./scripts/sync-credentials.sh if you changed USER_PASSWORD in .env.
 # @name userRegister
 POST {{host}}/api/auth/local/register
 Content-Type: application/json
 
 {
-    "username": "{{register_username}}",
-    "email": "{{register_email}}",
-    "password": "{{register_password}}"
+    "username": "{{user_username}}",
+    "email": "{{user_email}}",
+    "password": "{{user_password}}"
 }
 
 
