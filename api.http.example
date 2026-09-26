@@ -2,9 +2,13 @@
 # All credentials come from the `.env` file next to this file.
 # Run the "Login" call first: the returned JWT is reused automatically
 # by the "Profile" calls below through the `# @name` variables.
+#
+# API_PORT is the nginx reverse proxy, so the rate limiting in
+# nginx/default.conf applies to these calls. Hitting APP_PORT directly
+# (loopback) skips rate limiting.
 
 ## Variables
-@host = http://localhost:{{$dotenv APP_PORT}}
+@host = http://localhost:{{$dotenv API_PORT}}
 
 @admin_email = {{$dotenv ADMIN_EMAIL}}
 @admin_password = {{$dotenv ADMIN_PASSWORD}}
@@ -20,6 +24,9 @@
 
 
 ## 1.Admin
+
+# ถ้าเป็นฐานข้อมูลใหม่ (ยังไม่เคยมี admin) ให้รัน 1.2 Register ก่อน แล้วค่อยกลับมารัน 1.1 Login
+# ครั้งที่ 2 ขึ้นไป 1.1 Login จะได้ 200 ทันที แต่ 1.2 จะได้ 400 "You cannot register a new super admin" (ถูกต้อง)
 
 ### 1.1 Login
 # Saves the token as `adminLogin` -> used by 1.4 automatically.
@@ -80,6 +87,11 @@ Authorization: Bearer {{adminLogin.response.body.$.data.token}}
 
 
 ## 2.User
+
+# ถ้ายังไม่มี user account นี้ ให้รัน 2.2 Register ก่อน แล้วค่อยรัน 2.1 Login
+# 2.1 จะได้ 400 "Invalid identifier or password" จนกว่าจะมี account แล้ว
+# 2.3.1 / 2.3.2 ต้องใส่ reset code จริงที่รับจากอีเมล ถ้าไม่ใส่จะได้ 400 ตามปกติ
+# ดังนั้น 2.4 Profile จะได้ 401 ถ้า 2.1 Login ยังไม่สำเร็จ
 
 ### 2.1 Login
 # Saves the token as `userLogin` -> used by 2.4 automatically.
@@ -152,64 +164,78 @@ Authorization: Bearer {{userLogin.response.body.$.jwt}}
 
 ## 3.Content
 
-# ทุก call ในหัวข้อนี้ต้อง login ก่อน — รัน 1.1 Admin Login ให้เสร็จก่อนเสมอ
-# ใช้ token ของ admin เพราะ super admin ผ่าน permission ทุก content type
-# ถ้าต้องการทดสอบด้วยสิทธิ์ของ user ให้เปลี่ยนเป็น {{userLogin.response.body.$.jwt}}
+# Content API ของ Strapi ไม่รับ admin JWT (ตอบ 401) และไม่รับ user JWT
+# ถ้า role นั้นไม่มี permission (ตอบ 403) — ต้องใช้ API token จาก
+# Settings -> API Tokens -> Create API Token -> Full access
+# แล้วใส่ค่าไว้ที่ API_TOKEN ใน .env (ดูวิธีสร้างในไฟล์ .env)
 #
-# Strapi ต้องห่อ body ด้วย "data" และ id ใน URL คือเลขที่ Strapi สร้างให้
-# (ไม่ใช่ค่า studentId / subjectId / teacherId ที่เรากำหนดเอง)
+# ต้องสร้าง API token ครั้งเดียวก่อน แล้วทุก call ในหัวข้อนี้จะใช้ตัวเดียวกัน
+# ถ้าได้ 401/403 แปลว่ายังไม่ได้ใส่ API_TOKEN หรือ token หมดอายุ
+#
+# request body ต้องห่อด้วย "data" และ id ใน URL คือเลขที่ Strapi สร้างให้
 # 3.x.3 และ 3.x.4 ดึง id จาก response ของ 3.x.1 ให้อัตโนมัติ
-# ถ้าจะทดสอบกับ record ที่มีอยู่แล้ว ให้เปลี่ยนเป็น {{$dotenv STUDENT_ID}} / SUBJECT_ID / TEACHER_ID
 #
-# ถ้า content type เปิด Draft & Publish ให้เพิ่ม "publishedAt" ใน 3.x.1 เพื่อ publish ทันที
+# ทุก content type เปิด Draft & Publish — record ที่สร้างใหม่จะเป็น draft
+# (admin token มองเห็น draft ได้, user token มองไม่เห็น)
+# ถ้าต้องการ publish ทันทีให้เพิ่ม "publishedAt": "2026-01-01T00:00:00.000Z" ใน 3.x.1
 #
-# Schema ที่ไฟล์นี้อ้างอิง (สร้างผ่าน Content-Type Builder — แก้ให้ตรงกับของจริง):
-#   student  -> studentId(string), firstname(string), lastname(string), email(email), phone(string)
-#   subject  -> subjectId(string), subjectName(string), credit(integer)
-#   teacher  -> teacherId(string), firstname(string), lastname(string), email(email)
+# Fields ตาม Content-Type Builder (ทดสอบกับ API จริงแล้ว):
+#   student -> name(string), mobile(encrypted), cardId(string)
+#   subject -> name(string)
+#   teacher -> name(string)
+#
+# ข้อควรระวังตอนรัน:
+#   - student.cardId  unique และยาว Exactly 13 ตัวอักษร (ความยาวบัตรประชาชน)
+#     ถ้าใส่ไม่ครบ 13 จะได้ 400 "cardId must be at least/most 13 characters"
+#   - subject.name    unique  -> ถ้าใส่ซ้ำจะได้ 400 "This attribute must be unique"
+#   - teacher.name    ไม่ unique -> สร้างซ้ำได้
+#   - student.mobile  เป็น encrypted field -> ตอนอ่านกลับ (3.1.2 / 3.1.3)
+#     จะได้ค่าเป็น ciphertext 32 หลัก hex ไม่ใช่เบอร์ที่ส่งเข้าไป (ถ้าต้องการเทียบค่าให้ดู 3.1.4)
+#   - ผลของ Create ที่ unique (3.1.1 / 3.2.1) รันซ้ำไม่ได้ เหมือน 1.2 / 2.2
+#     ถ้าต้องการทดสอบซ้ำให้เปลี่ยนค่าใน .env แล้วรันใหม่
 
 
 ### 3.1 Student
 
 #### 3.1.1 Create
+# cardId ต้องครบ 13 หลักและห้ามซ้ำ
 # @name studentCreate
 POST {{host}}/api/students
-Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+Authorization: Bearer {{$dotenv API_TOKEN}}
 Content-Type: application/json
 
 {
     "data": {
-        "studentId": "{{$dotenv STUDENT_ID}}",
-        "firstname": "{{$dotenv STUDENT_FIRSTNAME}}",
-        "lastname": "{{$dotenv STUDENT_LASTNAME}}",
-        "email": "{{$dotenv STUDENT_EMAIL}}",
-        "phone": "{{$dotenv STUDENT_PHONE}}"
+        "name": "{{$dotenv STUDENT_NAME}}",
+        "mobile": "{{$dotenv STUDENT_MOBILE}}",
+        "cardId": "{{$dotenv STUDENT_CARD_ID}}"
     }
 }
 
 
 #### 3.1.2 List All
+# mobile ที่ได้กลับมาเป็น ciphertext เพราะเป็น encrypted field
 GET {{host}}/api/students
-Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+Authorization: Bearer {{$dotenv API_TOKEN}}
 
 
 #### 3.1.3 List with ID
 # ใช้ id ที่ได้จาก 3.1.1 — ถ้ายังไม่ได้รัน 3.1.1 ให้รัน 3.1.1 ก่อน
 GET {{host}}/api/students/{{studentCreate.response.body.$.data.id}}
-Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+Authorization: Bearer {{$dotenv API_TOKEN}}
 
 
 #### 3.1.4 Update
 # PUT ส่งเฉพาะ field ที่ต้องการแก้ก็ได้ (partial update)
 # @name studentUpdate
 PUT {{host}}/api/students/{{studentCreate.response.body.$.data.id}}
-Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+Authorization: Bearer {{$dotenv API_TOKEN}}
 Content-Type: application/json
 
 {
     "data": {
-        "firstname": "{{$dotenv STUDENT_UPDATE_FIRSTNAME}}",
-        "phone": "{{$dotenv STUDENT_UPDATE_PHONE}}"
+        "name": "{{$dotenv STUDENT_UPDATE_NAME}}",
+        "mobile": "{{$dotenv STUDENT_UPDATE_MOBILE}}"
     }
 }
 
@@ -217,41 +243,40 @@ Content-Type: application/json
 ### 3.2 Subject
 
 #### 3.2.1 Create
+# name ห้ามซ้ำกับ record ที่มีอยู่
 # @name subjectCreate
 POST {{host}}/api/subjects
-Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+Authorization: Bearer {{$dotenv API_TOKEN}}
 Content-Type: application/json
 
 {
     "data": {
-        "subjectId": "{{$dotenv SUBJECT_ID}}",
-        "subjectName": "{{$dotenv SUBJECT_NAME}}",
-        "credit": {{$dotenv SUBJECT_CREDIT}}
+        "name": "{{$dotenv SUBJECT_NAME}}"
     }
 }
 
 
 #### 3.2.2 List All
 GET {{host}}/api/subjects
-Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+Authorization: Bearer {{$dotenv API_TOKEN}}
 
 
 #### 3.2.3 List with ID
 # ใช้ id ที่ได้จาก 3.2.1 — ถ้ายังไม่ได้รัน 3.2.1 ให้รัน 3.2.1 ก่อน
 GET {{host}}/api/subjects/{{subjectCreate.response.body.$.data.id}}
-Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+Authorization: Bearer {{$dotenv API_TOKEN}}
 
 
 #### 3.2.4 Update
 # PUT ส่งเฉพาะ field ที่ต้องการแก้ก็ได้ (partial update)
 # @name subjectUpdate
 PUT {{host}}/api/subjects/{{subjectCreate.response.body.$.data.id}}
-Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+Authorization: Bearer {{$dotenv API_TOKEN}}
 Content-Type: application/json
 
 {
     "data": {
-        "credit": {{$dotenv SUBJECT_UPDATE_CREDIT}}
+        "name": "{{$dotenv SUBJECT_UPDATE_NAME}}"
     }
 }
 
@@ -261,39 +286,36 @@ Content-Type: application/json
 #### 3.3.1 Create
 # @name teacherCreate
 POST {{host}}/api/teachers
-Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+Authorization: Bearer {{$dotenv API_TOKEN}}
 Content-Type: application/json
 
 {
     "data": {
-        "teacherId": "{{$dotenv TEACHER_ID}}",
-        "firstname": "{{$dotenv TEACHER_FIRSTNAME}}",
-        "lastname": "{{$dotenv TEACHER_LASTNAME}}",
-        "email": "{{$dotenv TEACHER_EMAIL}}"
+        "name": "{{$dotenv TEACHER_NAME}}"
     }
 }
 
 
 #### 3.3.2 List All
 GET {{host}}/api/teachers
-Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+Authorization: Bearer {{$dotenv API_TOKEN}}
 
 
 #### 3.3.3 List with ID
 # ใช้ id ที่ได้จาก 3.3.1 — ถ้ายังไม่ได้รัน 3.3.1 ให้รัน 3.3.1 ก่อน
 GET {{host}}/api/teachers/{{teacherCreate.response.body.$.data.id}}
-Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+Authorization: Bearer {{$dotenv API_TOKEN}}
 
 
 #### 3.3.4 Update
 # PUT ส่งเฉพาะ field ที่ต้องการแก้ก็ได้ (partial update)
 # @name teacherUpdate
 PUT {{host}}/api/teachers/{{teacherCreate.response.body.$.data.id}}
-Authorization: Bearer {{adminLogin.response.body.$.data.token}}
+Authorization: Bearer {{$dotenv API_TOKEN}}
 Content-Type: application/json
 
 {
     "data": {
-        "firstname": "{{$dotenv TEACHER_UPDATE_FIRSTNAME}}"
+        "name": "{{$dotenv TEACHER_UPDATE_NAME}}"
     }
 }

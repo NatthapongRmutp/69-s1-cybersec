@@ -5,24 +5,38 @@ services:
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: <REDACTED>}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      # Consumed by db/init.sh to create the least-privilege app account.
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+    # Bound to loopback only — never expose Postgres on all interfaces.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Runs once on first init of postgres_data. Remove the volume to re-run.
+      - ./db/init.sh:/docker-entrypoint-initdb.d/10-init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
   pgadmin:
     image: dpage/pgadmin4
     container_name: 69-s2-admin
     restart: always
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: <REDACTED>}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    # Bound to loopback only — pgAdmin is an admin UI, not a public service.
     ports:
-      - "8082:80"
+      - "127.0.0.1:${PGADMIN_DEFAULT_PORT}:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
 
@@ -31,23 +45,38 @@ services:
     container_name: 69-s2-app
     restart: always
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    # Direct access to Strapi is kept on loopback for debugging only.
+    # Client traffic should go through nginx so rate limiting applies.
     ports:
-      - "9092:1337"
+      - "127.0.0.1:${APP_PORT}:1337"
     environment:
       DATABASE_CLIENT: postgres
       DATABASE_HOST: db
       DATABASE_PORT: 5432
       DATABASE_NAME: ${POSTGRES_DB}
-      DATABASE_USERNAME: ${POSTGRES_USER}
-      DATABASE_PASSWORD: <REDACTED>}
-      APP_KEYS: <REDACTED>}
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      APP_KEYS: ${APP_KEYS}
       API_TOKEN_SALT: ${API_TOKEN_SALT}
-      ADMIN_JWT_SECRET: <REDACTED>}
-      JWT_SECRET: <REDACTED>}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
       TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
     volumes:
       - strapi_data:/opt/app
+
+  nginx:
+    image: nginx:alpine
+    container_name: 69-s2-nginx
+    restart: always
+    depends_on:
+      - app
+    # The only publicly bound port. Everything else stays on loopback.
+    ports:
+      - "${API_PORT}:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 
 volumes:
   postgres_data:
