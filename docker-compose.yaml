@@ -32,6 +32,11 @@ services:
       db:
         condition: service_healthy
     environment:
+      # Server mode is required for the two variables below to have any effect.
+      # Without it pgAdmin runs in desktop mode and ignores them, so the
+      # configured password never protects anything.
+      PGADMIN_CONFIG_SERVER_MODE: "True"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     # Bound to loopback only — pgAdmin is an admin UI, not a public service.

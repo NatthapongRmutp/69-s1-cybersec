@@ -92,6 +92,12 @@ Authorization: Bearer {{adminLogin.response.body.$.data.token}}
 # 2.1 จะได้ 400 "Invalid identifier or password" จนกว่าจะมี account แล้ว
 # 2.3.1 / 2.3.2 ต้องใส่ reset code จริงที่รับจากอีเมล ถ้าไม่ใส่จะได้ 400 ตามปกติ
 # ดังนั้น 2.4 Profile จะได้ 401 ถ้า 2.1 Login ยังไม่สำเร็จ
+#
+# ข้อจำกัดที่ต้องรู้: ยังไม่ได้ตั้ง SMTP ในโปรเจกต์นี้ Strapi จึงส่งอีเมลไม่ได้
+#   - 1.3 / 2.3 (forgot-password) จะได้ 504 ภายใน 10 วินาที (nginx ตัดเวลาไว้แล้ว
+#     เพื่อไม่ให้ค้างนาน) ถ้าจะให้สำเร็จต้องตั้งค่า SMTP ใน .env ของ Strapi
+#   - 2.3.1 / 2.3.2 จึงยังทำต่อไม่ได้ เพราะไม่มี reset code
+#   ส่วนหัวข้อ 3 ไม่เกี่ยวกับอีเมล จึงใช้งานได้ครบทั้ง 12 call
 
 ### 2.1 Login
 # Saves the token as `userLogin` -> used by 2.4 automatically.
@@ -197,6 +203,9 @@ Authorization: Bearer {{userLogin.response.body.$.jwt}}
 # ขั้นตอนก่อนใช้หัวข้อ 3.1-3.3 — ไม่ใช่ส่วนที่มอบหมาย
 # ใช้ admin JWT จาก 1.1 Login แล้วเก็บ accessKey ไว้ให้ทุก call ในหัวข้อ 3 ใช้เอง
 # ชื่อ token มีเลขสุ่มต่อท้าย เพื่อให้รันซ้ำได้โดยไม่ชน "Name already taken"
+# lifespan = 604800000 ms (7 วัน) — full-access ที่ไม่มีวันหมดอายุเป็นความเสี่ยง
+#   ค่าที่ Strapi รับได้: null | 604800000 (7 วัน) | 2592000000 (30 วัน) | 7776000000 (90 วัน)
+# เมื่อหมดอายุ หัวข้อ 3 จะได้ 401 ให้รัน Prereq.1 ใหม่เพื่อออก token ใหม่
 # accessKey จะแสดงครั้งเดียวตอนสร้างเท่านั้น ถ้าทำหายต้องสร้างใหม่
 # @name contentApiToken
 POST {{host}}/admin/api-tokens
@@ -207,7 +216,7 @@ Authorization: Bearer {{adminLogin.response.body.$.data.token}}
     "name": "rest-client-{{$randomInt 1000 9999}}",
     "description": "auto-created by api.http for section 3",
     "type": "full-access",
-    "lifespan": null
+    "lifespan": 604800000
 }
 
 
