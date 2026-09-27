@@ -86,3 +86,18 @@ SELECT reset_password_token FROM up_users WHERE email = '<USER_EMAIL ของ�
 
 หัวข้อ 3 ไม่ต้องเตรียมอะไรเพิ่ม ตัวไฟล์จะสร้าง API token ให้เองที่ `Prereq.1`
 และใช้กับทุก call ใน 3.1-3.3 อัตโนมัติ (token มีอายุ 7 วัน)
+
+### ค่าที่ unique ต้องเปลี่ยนทุกครั้งที่รันซ้ำ
+
+`student.mobile`, `student.cardId` และ `subject.name` เป็น unique ใน Content-Type Builder
+ถ้าใส่ค่าเดิมซ้ำจะได้ `400 This attribute must be unique` — ซึ่งเป็นผลที่ถูกต้อง
+ตามข้อ 2.2/1.2 ที่รันซ้ำไม่ได้เช่นกัน ถ้าจะทดสอบซ้ำให้แก้ค่าใน `.env` แล้วรันใหม่
+
+### ระบุ record ที่จะดึง/แก้
+
+`3.x.3` และ `3.x.4` อ่าน id จาก `STUDENT_ID` / `SUBJECT_ID` / `TEACHER_ID` ใน `.env`
+(ผูกเป็น `@student_id` / `@subject_id` / `@teacher_id` ในบล็อก `## Variables` ของ `api.http`)
+จึงไม่ต้องรัน `3.x.1` ก่อน และรันซ้ำได้โดยไม่ชน unique
+
+ดูค่า id ที่มีอยู่ได้จาก response ของ `3.x.1` หรือเปิด pgAdmin ที่ `http://127.0.0.1:8082`
+แล้วดูคอลัมน์ `id` ในตาราง `students` / `subjects` / `teachers`

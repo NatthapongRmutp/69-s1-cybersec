@@ -13,14 +13,17 @@
 @admin_email = {{$dotenv ADMIN_EMAIL}}
 @admin_password = {{$dotenv ADMIN_PASSWORD}}
 
+@user_username = {{$dotenv USER_USERNAME}}
 @user_email = {{$dotenv USER_EMAIL}}
 @user_password = {{$dotenv USER_PASSWORD}}
 
 @new_password = {{$dotenv NEW_PASSWORD}}
 
-@register_username = {{$dotenv REGISTER_USERNAME}}
-@register_email = {{$dotenv REGISTER_EMAIL}}
-@register_password = {{$dotenv REGISTER_PASSWORD}}
+# id ของ record ที่ 3.x.3 / 3.x.4 จะไปดึงและแก้ — เปลี่ยนที่นี่ที่เดียว
+# ดูค่าได้จาก response ของ 3.x.1 หรือจาก pgAdmin (http://127.0.0.1:8082)
+@student_id = {{$dotenv STUDENT_ID}}
+@subject_id = {{$dotenv SUBJECT_ID}}
+@teacher_id = {{$dotenv TEACHER_ID}}
 
 
 ## 1.Admin
@@ -178,8 +181,10 @@ Authorization: Bearer {{userLogin.response.body.$.jwt}}
 # ทุก call ในหัวข้อนี้จะใช้ token ตัวเดียวกันที่สร้างในขั้นตอนนั้น
 # ถ้าได้ 401/403 แปลว่ายังไม่ได้รัน Prereq.1 หรือ admin login ไม่สำเร็จ
 #
-# request body ต้องห่อด้วย "data" และ id ใน URL คือเลขที่ Strapi สร้างให้
-# 3.x.3 และ 3.x.4 ดึง id จาก response ของ 3.x.1 ให้อัตโนมัติ
+# request body ต้องห่อด้วย "data" และ id ใน URL อ่านจาก STUDENT_ID / SUBJECT_ID /
+# TEACHER_ID ใน .env (ผูกไว้ที่บล็อก ## Variables ด้านบน) จึงไม่ต้องรัน 3.x.1 ก่อน
+# ถ้าอยากได้ id ของ record ที่เพิ่งสร้าง ให้เปลี่ยนกลับเป็น
+# {{studentCreate.response.body.$.data.id}} ใน 3.x.3 / 3.x.4
 #
 # ทุก content type เปิด Draft & Publish — record ที่สร้างใหม่จะเป็น draft
 # (admin token มองเห็น draft ได้, user token มองไม่เห็น)
@@ -247,15 +252,15 @@ Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 
 
 #### 3.1.3 List with ID
-# ใช้ id ที่ได้จาก 3.1.1 — ถ้ายังไม่ได้รัน 3.1.1 ให้รัน 3.1.1 ก่อน
-GET {{host}}/api/students/{{studentCreate.response.body.$.data.id}}
+# ใช้ id จาก STUDENT_ID ใน .env (หรือเปลี่ยนเป็น {{studentCreate.response.body.$.data.id}} เพื่อดึงจาก 3.1.1 สด ๆ)
+GET {{host}}/api/students/{{student_id}}
 Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 
 
 #### 3.1.4 Update
 # PUT ส่งเฉพาะ field ที่ต้องการแก้ก็ได้ (partial update)
 # @name studentUpdate
-PUT {{host}}/api/students/{{studentCreate.response.body.$.data.id}}
+PUT {{host}}/api/students/{{student_id}}
 Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 Content-Type: application/json
 
@@ -289,15 +294,15 @@ Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 
 
 #### 3.2.3 List with ID
-# ใช้ id ที่ได้จาก 3.2.1 — ถ้ายังไม่ได้รัน 3.2.1 ให้รัน 3.2.1 ก่อน
-GET {{host}}/api/subjects/{{subjectCreate.response.body.$.data.id}}
+# ใช้ id จาก SUBJECT_ID ใน .env
+GET {{host}}/api/subjects/{{subject_id}}
 Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 
 
 #### 3.2.4 Update
 # PUT ส่งเฉพาะ field ที่ต้องการแก้ก็ได้ (partial update)
 # @name subjectUpdate
-PUT {{host}}/api/subjects/{{subjectCreate.response.body.$.data.id}}
+PUT {{host}}/api/subjects/{{subject_id}}
 Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 Content-Type: application/json
 
@@ -329,15 +334,15 @@ Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 
 
 #### 3.3.3 List with ID
-# ใช้ id ที่ได้จาก 3.3.1 — ถ้ายังไม่ได้รัน 3.3.1 ให้รัน 3.3.1 ก่อน
-GET {{host}}/api/teachers/{{teacherCreate.response.body.$.data.id}}
+# ใช้ id จาก TEACHER_ID ใน .env
+GET {{host}}/api/teachers/{{teacher_id}}
 Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 
 
 #### 3.3.4 Update
 # PUT ส่งเฉพาะ field ที่ต้องการแก้ก็ได้ (partial update)
 # @name teacherUpdate
-PUT {{host}}/api/teachers/{{teacherCreate.response.body.$.data.id}}
+PUT {{host}}/api/teachers/{{teacher_id}}
 Authorization: Bearer {{contentApiToken.response.body.$.data.accessKey}}
 Content-Type: application/json
 
